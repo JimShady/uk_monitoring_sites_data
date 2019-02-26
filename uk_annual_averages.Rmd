@@ -1,0 +1,78 @@
+---
+title: "UK Annual Averages"
+author: "James David Smith"
+date: "26 February 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+
+library(tidyverse)
+library(openair)
+library(lubridate)
+
+```
+
+Import air quality data from KCL and calculate annual means + completeness by site code.
+
+```{r, message=F, warning=F, echo=T}
+
+aurn          <- importMeta(source = 'aurn') %>% group_by(code) %>% summarise() %>% mutate(code = as.character(code))
+kcl           <- importMeta(source = 'kcl') %>% group_by(code) %>% summarise() %>% mutate(code = as.character(code))
+
+kcl_data      <- list()
+
+for (i in 1:nrow(kcl)) {
+  
+  kcl_data[[i]] <- importKCL(site = kcl$code[i], pollutant = 'all', year = 2013:2019)
+  
+  closeAllConnections()
+  
+}
+
+kcl_data[sapply(kcl_data, is.null)] <- NULL
+
+result_data <- unique(unlist(lapply(kcl_data, names))) %>% 
+                as_tibble() %>% 
+                rownames_to_column() %>% 
+                spread(value, rowname, fill=NA)
+
+result_data[1,] <- NA
+
+for (i in 1:length(kcl_data)) {
+  
+  result_data <- bind_rows(kcl_data[[i]], result_data)
+  
+}
+
+rm(kcl_data)
+
+kcl_means <- result_data %>% 
+              select(-site, -pm10_raw, -so2, -v10, -v2.5, -nv10, -nv2.5) %>% 
+              mutate(date = year(date)) %>%
+              group_by(date, code) %>% 
+              summarise_all(funs(count = sum(!is.na(.)), 
+                                 mean  = mean(., na.rm=T)))
+
+counts <- kcl_means %>% 
+  select(date, code, nox_count, no2_count, o3_count, pm10_count, co_count) %>% 
+  gather(pollutant, measurements, nox_count, no2_count, o3_count, pm10_count, co_count) %>%
+  mutate(pollutant = gsub("_.*", "", pollutant))
+
+
+means <- kcl_means %>% 
+  select(date, code, nox_mean, no2_mean, o3_mean, pm10_mean, co_mean) %>% 
+  gather(pollutant, mean, nox_mean, no2_mean, o3_mean, pm10_mean, co_mean) %>%
+  mutate(pollutant = gsub("_.*", "", pollutant))
+
+rm(result_data)
+
+result <- bind_cols(means, counts) %>% 
+          select(date, code, pollutant, mean, measurements) %>%
+          filter(!is.na(mean)) %>% 
+          ungroup()
+
+
+
+```
