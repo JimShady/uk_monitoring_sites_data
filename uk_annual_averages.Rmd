@@ -238,10 +238,25 @@ result[is.na(result$name), 'name'] <- 'Non-London'
 
 ```
 
+Count sites per year
+
+```{r}
+
+sites_per_year <- result %>% 
+                    as_tibble() %>% 
+                    group_by(pollutant, date) %>% 
+                    summarise(n()) %>% 
+                    ungroup() %>% 
+                    rename(sites = 'n()')
+
+result <- left_join(result, sites_per_year)
+
+```
+
 Make graphs
 
 ```{r}
-cols <- c('Non-London' = 'red', 'LAEIBox' = 'blue')
+cols                <- c('Non-London' = 'red', 'LAEIBox' = 'blue')
 
 ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70), aes(date, mean, group=code)) +
   geom_path(alpha=0.4,aes(colour=name)) +
