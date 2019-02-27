@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "laei_box",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Polygon", "coordinates": [ [ [ -0.547433665486069, 51.261113177683775 ], [ -0.532757369722097, 51.720608227086615 ], [ 0.343008839256132, 51.706406184276048 ], [ 0.319586632092166, 51.247141466772035 ], [ -0.547433665486069, 51.261113177683775 ] ] ] } }
+]
+}
