@@ -31,6 +31,8 @@ for (i in 1:nrow(kcl)) {
   
   closeAllConnections()
   
+  print(i)
+  
 }
 
 kcl_data[sapply(kcl_data, is.null)] <- NULL
@@ -53,7 +55,7 @@ for (i in 1:length(kcl_data)) {
 
 rm(kcl_data)
 
-#save(result_data, file='kcl_results.Rdata')
+save(result_data, file='kcl_results.Rdata')
 #load('kcl_results.Rdata')
 
 kcl_means <- result_data %>% 
@@ -220,6 +222,9 @@ Combine data
 
 ```{r, message=F, warning=F, echo=F}
 
+kcl_result$source <- 'importKCL'
+aurn_result$source <- 'importAURN'
+
 result <- bind_rows(kcl_result, aurn_result)
 rm(kcl_result, aurn_result)
 
@@ -246,22 +251,6 @@ rm(box)
 result <- left_join(result, sites) %>% st_as_sf() %>% st_transform(27700)
 
 result[is.na(result$name), 'name'] <- 'Non-London'
-
-```
-
-Count sites per year
-
-```{r, message=F, warning=F, echo=F}
-
-sites_per_year <- result %>% 
-                    as_tibble() %>% 
-                    group_by(pollutant, date) %>% 
-                    summarise(n()) %>% 
-                    ungroup() %>% 
-                    rename(sites = 'n()') %>%
-                    st_drop_geometry()
-
-result <- left_join(result, sites_per_year)
 
 ```
 
@@ -292,6 +281,6 @@ Write data
 
 ```{r, message=F, warning=F, echo=F}
 
-result %>% st_drop_geometry() %>% select(-sites) %>% write_csv(paste0('site_means_', Sys.Date(), '.csv'))
+result %>% st_drop_geometry() %>% write_csv(paste0('site_means_', Sys.Date(), '.csv'))
 
 ```
