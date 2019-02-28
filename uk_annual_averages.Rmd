@@ -34,6 +34,8 @@ for (i in 1:nrow(kcl)) {
 
 kcl_data[sapply(kcl_data, is.null)] <- NULL
 
+
+
 result_data <- unique(unlist(lapply(kcl_data, names))) %>% 
                 as_tibble() %>% 
                 rownames_to_column() %>% 
@@ -49,6 +51,9 @@ for (i in 1:length(kcl_data)) {
 }
 
 rm(kcl_data)
+
+#save(result_data, file='kcl_results.Rdata')
+#load('kcl_results.Rdata')
 
 kcl_means <- result_data %>% 
               select(-site, -pm10_raw, -so2, -v10, -v2.5, -nv10, -nv2.5) %>% 
@@ -72,18 +77,18 @@ kcl_pm10days <- result_data %>%
                   summarise(exceedance_days = n()) %>%
                   ungroup() %>%
                   rename(date         = `substr(day, 1, 4)`,
-                         mean         = exceedance_days,
-                         measurements = NA) %>%
+                         mean         = exceedance_days) %>%
                   mutate(pollutant  = 'pm10d',
                          date       = as.numeric(date),
                          hours      = NA,
+                         measurements = NA,
                          percentage = NA)
                   
   
 counts <- kcl_means %>% 
-  select(date, code, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>% 
-  gather(pollutant, measurements, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>%
-  mutate(pollutant = gsub("_.*", "", pollutant))
+          select(date, code, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>% 
+          gather(pollutant, measurements, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>%
+          mutate(pollutant = gsub("_.*", "", pollutant))
 
 
 means <- kcl_means %>% 
@@ -106,7 +111,7 @@ kcl_result$percentage <- 100*(kcl_result$measurements / kcl_result$hours)
 
 kcl_result    <- bind_rows(kcl_result, kcl_pm10days)
 
-rm(counts, hours, kcl, kcl_means, means, kcl_pm10days)
+rm(counts, hours, kcl, kcl_means, means, kcl_pm10days,i)
 
 ```
 
