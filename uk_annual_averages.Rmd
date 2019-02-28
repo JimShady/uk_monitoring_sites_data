@@ -13,6 +13,7 @@ library(openair)
 library(lubridate)
 library(gganimate)
 library(sf)
+library(gifski)
 
 ```
 
@@ -129,6 +130,8 @@ for (i in 1:nrow(aurn)) {
   
   closeAllConnections()
   
+  print(i)
+  
 }
 
 aurn_data[sapply(aurn_data, is.null)] <- NULL
@@ -146,6 +149,9 @@ for (i in 1:length(aurn_data)) {
   result_data <- suppressWarnings(bind_rows(as_tibble(aurn_data[[i]]), result_data))
   
 }
+
+#save(result_data, file='aurn_results.Rdata')
+#load('aurn_results.Rdata')
 
 rm(aurn_data)
 
@@ -206,16 +212,16 @@ aurn_result$percentage <- 100*(aurn_result$measurements / aurn_result$hours)
 
 aurn_result    <- bind_rows(aurn_result, aurn_pm10days)
 
-rm(counts, hours, aurn, aurn_means, means, aurn_pm10days)
+rm(counts, hours, aurn, aurn_means, means, aurn_pm10days,i)
 
 ```
 
 Combine data
 
-```{r}
+```{r, message=F, warning=F, echo=F}
 
 result <- bind_rows(kcl_result, aurn_result)
-rm(kcl_result, aurn_result,i)
+rm(kcl_result, aurn_result)
 
 result <- select(result, -measurements, -hours) %>% rename(capture_rate = percentage)
 
@@ -223,7 +229,7 @@ result <- select(result, -measurements, -hours) %>% rename(capture_rate = percen
 
 Identify London sites
 
-```{r}
+```{r, message=F, warning=F, echo=F}
 
 box   <- st_read('laei_box.geojson',quiet=TRUE) %>% mutate(name = 'LAEIBox')
 
@@ -245,14 +251,15 @@ result[is.na(result$name), 'name'] <- 'Non-London'
 
 Count sites per year
 
-```{r}
+```{r, message=F, warning=F, echo=F}
 
 sites_per_year <- result %>% 
                     as_tibble() %>% 
                     group_by(pollutant, date) %>% 
                     summarise(n()) %>% 
                     ungroup() %>% 
-                    rename(sites = 'n()')
+                    rename(sites = 'n()') %>%
+                    st_drop_geometry()
 
 result <- left_join(result, sites_per_year)
 
@@ -260,7 +267,7 @@ result <- left_join(result, sites_per_year)
 
 Make graphs
 
-```{r}
+```{r, message=F, warning=F, echo=F}
 cols                <- c('Non-London' = 'red', 'LAEIBox' = 'blue')
 
 ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70), aes(date, mean, group=code)) +
@@ -281,4 +288,10 @@ ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_r
   ease_aes('linear')
 ```
 
-London sites compared to non-London sites?
+Write data
+
+```{r, message=F, warning=F, echo=F}
+
+result %>% st_drop_geometry() %>% select(-sites) %>% write_csv(paste0('site_means_', Sys.Date(), '.csv'))
+
+```
