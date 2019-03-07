@@ -37,8 +37,6 @@ for (i in 1:nrow(kcl)) {
 
 kcl_data[sapply(kcl_data, is.null)] <- NULL
 
-
-
 result_data <- unique(unlist(lapply(kcl_data, names))) %>% 
                 as_tibble() %>% 
                 rownames_to_column() %>% 
@@ -59,24 +57,24 @@ save(result_data, file='kcl_results.Rdata')
 #load('kcl_results.Rdata')
 
 kcl_means <- result_data %>% 
-              select(-site, -pm10_raw, -so2, -v10, -v2.5, -nv10, -nv2.5) %>% 
+              select(-pm10_raw, -so2, -v10, -v2.5, -nv10, -nv2.5) %>% 
               mutate(date = year(date)) %>%
-              group_by(date, code) %>% 
+              group_by(site, date, code) %>% 
               summarise_all(funs(count = sum(!is.na(.)), 
                                  mean  = mean(., na.rm=T)))
 
 # Calculate numbers of days of exceedance per site. Decided need to have >= 19 hours of data in a day for the mean to be valid
 # 
 kcl_pm10days <- result_data %>%
-                  select(date, code, pm10) %>%
-                  group_by(format(date, '%Y-%m-%d'), code) %>%
+                  select(site, date, code, pm10) %>%
+                  group_by(site, format(date, '%Y-%m-%d'), code) %>%
                   summarise_all(funs(count = sum(!is.na(.)), 
                                  mean  = mean(., na.rm=T))) %>%
                   rename(day = `format(date, "%Y-%m-%d")`) %>%
-                  select(day, code, pm10_count, pm10_mean) %>%
+                  select(site, day, code, pm10_count, pm10_mean) %>%
                   filter(pm10_count >= 17 & pm10_mean > 50) %>%
-                  select(day, code, pm10_mean) %>%
-                  group_by(substr(day,1,4), code) %>%
+                  select(site, day, code, pm10_mean) %>%
+                  group_by(site, substr(day,1,4), code) %>%
                   summarise(exceedance_days = n()) %>%
                   ungroup() %>%
                   rename(date         = `substr(day, 1, 4)`,
@@ -89,20 +87,20 @@ kcl_pm10days <- result_data %>%
                   
   
 counts <- kcl_means %>% 
-          select(date, code, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>% 
+          select(site, date, code, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>% 
           gather(pollutant, measurements, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>%
           mutate(pollutant = gsub("_.*", "", pollutant))
 
 
 means <- kcl_means %>% 
-  select(date, code, nox_mean, no2_mean, o3_mean, pm10_mean, co_mean, pm25_mean) %>% 
+  select(site, date, code, nox_mean, no2_mean, o3_mean, pm10_mean, co_mean, pm25_mean) %>% 
   gather(pollutant, mean, nox_mean, no2_mean, o3_mean, pm10_mean, co_mean, pm25_mean) %>%
   mutate(pollutant = gsub("_.*", "", pollutant))
 
 rm(result_data)
 
-kcl_result <- bind_cols(means, counts) %>% #left_join
-          select(date, code, pollutant, mean, measurements) %>%
+kcl_result <- left_join(means, counts, by = c('site' = 'site', 'date' = 'date', 'code' = 'code', 'pollutant' = 'pollutant')) %>% #left_join
+          select(site, date, code, pollutant, mean, measurements) %>%
           filter(!is.na(mean)) %>% 
           ungroup()
 
@@ -130,6 +128,8 @@ for (i in 1:nrow(aurn)) {
   
   aurn_data[[i]] <- importAURN(site = aurn$code[i], pollutant = 'all', year = 2013:2019)
   
+  ## 
+  
   closeAllConnections()
   
   print(i)
@@ -152,31 +152,31 @@ for (i in 1:length(aurn_data)) {
   
 }
 
-#save(result_data, file='aurn_results.Rdata')
+save(result_data, file='aurn_results.Rdata')
 #load('aurn_results.Rdata')
 
 rm(aurn_data)
 
 aurn_means <- result_data %>% 
-              select(-site, -wd, -ws,-nv10,-v10,-nv2.5,-v2.5) %>% 
+              select(-wd, -ws,-nv10,-v10,-nv2.5,-v2.5) %>% 
               mutate(date = year(date)) %>%
               rename(pm25 = pm2.5) %>%
-              group_by(date, code) %>% 
+              group_by(site, date, code) %>% 
               summarise_all(funs(count = sum(!is.na(.)), 
                                  mean  = mean(., na.rm=T)))
 
 # Calculate numbers of days of exceedance per site. Decided need to have >= 19 hours of data in a day for the mean to be valid
 # 
 aurn_pm10days <- result_data %>%
-                  select(date, code, pm10) %>%
-                  group_by(format(date, '%Y-%m-%d'), code) %>%
+                  select(site, date, code, pm10) %>%
+                  group_by(site, format(date, '%Y-%m-%d'), code) %>%
                   summarise_all(funs(count = sum(!is.na(.)), 
                                  mean  = mean(., na.rm=T))) %>%
                   rename(day = `format(date, "%Y-%m-%d")`) %>%
-                  select(day, code, pm10_count, pm10_mean) %>%
+                  select(site, day, code, pm10_count, pm10_mean) %>%
                   filter(pm10_count >= 17 & pm10_mean > 50) %>%
-                  select(day, code, pm10_mean) %>%
-                  group_by(substr(day,1,4), code) %>%
+                  select(site, day, code, pm10_mean) %>%
+                  group_by(site, substr(day,1,4), code) %>%
                   summarise(exceedance_days = n()) %>%
                   ungroup() %>%
                   rename(date         = `substr(day, 1, 4)`,
@@ -189,20 +189,20 @@ aurn_pm10days <- result_data %>%
                   
   
 counts <- aurn_means %>% 
-  select(date, code, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>% 
+  select(site, date, code, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>% 
   gather(pollutant, measurements, nox_count, no2_count, o3_count, pm10_count, co_count, pm25_count) %>%
   mutate(pollutant = gsub("_.*", "", pollutant))
 
 
 means <- aurn_means %>% 
-  select(date, code, nox_mean, no2_mean, o3_mean, pm10_mean, co_mean, pm25_mean) %>% 
+  select(site, date, code, nox_mean, no2_mean, o3_mean, pm10_mean, co_mean, pm25_mean) %>% 
   gather(pollutant, mean, nox_mean, no2_mean, o3_mean, pm10_mean, co_mean, pm25_mean) %>%
   mutate(pollutant = gsub("_.*", "", pollutant))
 
 rm(result_data)
 
-aurn_result <- bind_cols(means, counts) %>% #left_join
-          select(date, code, pollutant, mean, measurements) %>%
+aurn_result <- left_join(means, counts, by = c('site' = 'site', 'date' = 'date', 'code' = 'code', 'pollutant' = 'pollutant')) %>% #left_join
+          select(site, date, code, pollutant, mean, measurements) %>%
           filter(!is.na(mean)) %>% 
           ungroup()
 
@@ -222,7 +222,7 @@ Combine data
 
 ```{r, message=F, warning=F, echo=F}
 
-kcl_result$source <- 'importKCL'
+kcl_result$source  <- 'importKCL'
 aurn_result$source <- 'importAURN'
 
 result <- bind_rows(kcl_result, aurn_result)
@@ -238,9 +238,10 @@ Identify London sites
 
 box   <- st_read('laei_box.geojson',quiet=TRUE) %>% mutate(name = 'LAEIBox')
 
-sites <- bind_rows(importMeta(source = 'kcl'), importMeta(source = 'aurn')) %>% 
+sites <- bind_rows(mutate(importMeta(source = 'kcl'), source = 'importKCL'), 
+                   mutate(importMeta(source = 'aurn'), source = 'importAURN')) %>% 
           as_tibble() %>% 
-          dplyr::select(code, latitude, longitude, site.type) %>% 
+          dplyr::select(code, site, latitude, longitude, site.type, source) %>% 
           st_as_sf(coords = c('longitude', 'latitude'), na.fail = F) %>%
           st_set_crs(4326)
 
@@ -248,18 +249,38 @@ sites <- st_join(sites, box, join = st_intersects)
 
 rm(box)
 
-result <- left_join(result, sites) %>% st_as_sf() %>% st_transform(27700)
+result <- left_join(result, sites, by = c('site' = 'site', 'source' = 'source', 'code' = 'code')) %>% st_as_sf() %>% st_transform(27700)
 
 result[is.na(result$name), 'name'] <- 'Non-London'
+
+```
+
+Where there is data from KCL and also from AURN, just keep the KCL data
+
+```{r}
+
+result <- result %>% 
+              select(date, code, pollutant) %>% 
+              st_drop_geometry() %>% 
+              group_by(date, code, pollutant) %>% 
+              summarise(n()) %>% 
+              rename(count = 'n()') %>% 
+              filter(count > 1) %>% 
+              mutate(duplicate = 'Y') %>% 
+              select(-count) %>%
+              mutate(source = 'importAURN') %>%
+              left_join(result, ., by = c('date' = 'date', 'pollutant' = 'pollutant', 'code' = 'code', 'source' = 'source'))
+
+result[is.na(result$duplicate), 'duplicate'] <- 'N'
 
 ```
 
 Make graphs
 
 ```{r, message=F, warning=F, echo=F}
-cols                <- c('Non-London' = 'red', 'LAEIBox' = 'blue')
+cols                <- c('Non-London' = 'yellow', 'LAEIBox' = 'red')
 
-ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70), aes(date, mean, group=code)) +
+ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70 & duplicate == 'N'), aes(date, mean, group=code)) +
   geom_path(alpha=0.4,aes(colour=name)) +
   scale_color_manual(values = cols) +
   #geom_smooth(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & percentage > 70), aes(date, mean, group=1),
@@ -281,6 +302,24 @@ Write data
 
 ```{r, message=F, warning=F, echo=F}
 
-result %>% st_drop_geometry() %>% write_csv(paste0('site_means_', Sys.Date(), '.csv'))
+result %>% 
+  st_drop_geometry() %>% 
+  write_csv(paste0('site_means_', Sys.Date(), '.csv'))
+
+```
+
+Make map
+
+```{r}
+london    <- st_read('https://github.com/KCL-ERG/useful_geography/raw/master/london_boroughs.geojson')
+
+ggplot() + 
+  geom_sf(data=london) +
+  geom_sf(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70 & duplicate == 'N'),
+          aes(size = mean)) +
+  transition_time(date) +
+  ease_aes('linear')
+  
+
 
 ```
