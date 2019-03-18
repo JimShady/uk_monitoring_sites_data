@@ -1,0 +1,70 @@
+---
+title: "UK Annual Averages"
+author: "James David Smith"
+date: "26 February 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+
+library(tidyverse)
+library(openair)
+library(lubridate)
+library(gganimate)
+library(sf)
+library(gifski)
+
+load('kcl_results.Rdata')
+
+kcl_result <- result_data %>% select(date, site, code, nox, no2)
+
+rm(result_data)
+
+load('aurn_results.Rdata')
+
+aurn_result <- result_data %>% select(date, site, code, nox, no2)
+
+rm(result_data) 
+
+kcl_result$source  <- 'importKCL'
+aurn_result$source <- 'importAURN'
+
+result <- bind_rows(kcl_result, aurn_result)
+rm(kcl_result, aurn_result)
+
+box   <- st_read('laei_box.geojson',quiet=TRUE) %>% mutate(name = 'LAEIBox')
+
+sites <- bind_rows(mutate(importMeta(source = 'kcl'), source = 'importKCL'), 
+                   mutate(importMeta(source = 'aurn'), source = 'importAURN')) %>% 
+          as_tibble() %>% 
+          dplyr::select(code, site, latitude, longitude, site.type, source) %>% 
+          st_as_sf(coords = c('longitude', 'latitude'), na.fail = F) %>%
+          st_set_crs(4326)
+
+sites <- st_join(sites, box, join = st_intersects)
+
+rm(box)
+
+result <- left_join(result, sites, by = c('site' = 'site', 'source' = 'source', 'code' = 'code')) %>% st_as_sf() %>% st_transform(27700)
+
+result[is.na(result$name), 'name'] <- 'Non-London'
+
+result <- result %>% 
+              select(date, code, pollutant) %>% 
+              st_drop_geometry() %>% 
+              group_by(date, code, pollutant) %>% 
+              summarise(n()) %>% 
+              rename(count = 'n()') %>% 
+              filter(count > 1) %>% 
+              mutate(duplicate = 'Y') %>% 
+              select(-count) %>%
+              mutate(source = 'importAURN') %>%
+              left_join(result, ., by = c('date' = 'date', 'pollutant' = 'pollutant', 'code' = 'code', 'source' = 'source'))
+
+result[is.na(result$duplicate), 'duplicate'] <- 'N'
+
+
+result %>% 
+  st_drop_geometry() %>% 
+  write_csv(paste0('site_means_', Sys.Date(), '.csv'))
