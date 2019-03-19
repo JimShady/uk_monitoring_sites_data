@@ -249,9 +249,11 @@ sites <- st_join(sites, box, join = st_intersects)
 
 rm(box)
 
-result <- left_join(result, sites, by = c('site' = 'site', 'source' = 'source', 'code' = 'code')) %>% st_as_sf() %>% st_transform(27700)
+result <- left_join(result, sites, by = c('site' = 'site', 'source' = 'source', 'code' = 'code')) %>% st_as_sf()
 
 result[is.na(result$name), 'name'] <- 'Non-London'
+
+rm(sites)
 
 ```
 
@@ -303,8 +305,8 @@ Write data
 ```{r, message=F, warning=F, echo=F}
 
 result %>% 
-  st_drop_geometry() %>% 
-  write_csv(paste0('site_means_', Sys.Date(), '.csv'))
+  st_transform(27700) %>% 
+  st_write(paste0('site_means_', Sys.Date(), '.csv'), layer_options = "GEOMETRY=AS_XY")
 
 ```
 
