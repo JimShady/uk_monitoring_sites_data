@@ -3,6 +3,8 @@ title: "UK Annual Averages"
 author: "James David Smith"
 date: "26 February 2019"
 output: html_document
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "docs") })
 ---
 
 ```{r setup, include=FALSE}
@@ -15,23 +17,25 @@ library(gganimate)
 library(sf)
 library(gifski)
 
+years <- 2017
+
 ```
 
 Import air quality data from KCL and calculate annual means + completeness by site code and pollutant.
 
-```{r, message=F, warning=F, echo=F}
+```{r}
 
-kcl           <- importMeta(source = 'kcl') %>% group_by(code) %>% summarise() %>% mutate(code = as.character(code))
+suppressWarnings(dir.create('site_data'))
+
+kcl           <- importMeta(source = 'kcl') %>% group_by(code) %>% summarise() %>% mutate(code = as.character(code)) %>% head(100)
 
 kcl_data      <- list()
 
 for (i in 1:nrow(kcl)) {
   
-  kcl_data[[i]] <- importKCL(site = kcl$code[i], pollutant = 'all', year = 2013:2019)
+  kcl_data[[i]] <- suppressWarnings(importKCL(site = kcl$code[i], pollutant = 'all', year = years))
   
-  closeAllConnections()
-  
-  print(i)
+  #closeAllConnections()
   
 }
 
@@ -53,7 +57,7 @@ for (i in 1:length(kcl_data)) {
 
 rm(kcl_data)
 
-save(result_data, file='kcl_results.Rdata')
+#save(result_data, file='kcl_results.Rdata')
 #load('kcl_results.Rdata')
 
 kcl_means <- result_data %>% 
@@ -104,8 +108,10 @@ kcl_result <- left_join(means, counts, by = c('site' = 'site', 'date' = 'date', 
           filter(!is.na(mean)) %>% 
           ungroup()
 
-hours <- tibble(year  = 2013:2019,
+hours <- tibble(years_to_consider = c(2013, 2014, 2015, 2016, 2017, 2018, 2019),
                 hours = c(8761,8761,8761,8785,8761,8761,8761))
+
+hours <- filter(hours, years_to_consider %in% years) %>% rename(year = years_to_consider)
 
 kcl_result            <- left_join(kcl_result, hours, by = c('date' = 'year'))
 kcl_result$percentage <- 100*(kcl_result$measurements / kcl_result$hours)
@@ -118,19 +124,17 @@ rm(counts, hours, kcl, kcl_means, means, kcl_pm10days,i)
 
 Import air quality data from AURN and calculate annual means + completeness by site code and pollutant.
 
-```{r, message=F, warning=F, echo=F}
+```{r, message=F, warning=F, echo=T, results='hide'}
 
-aurn           <- importMeta(source = 'aurn') %>% group_by(code) %>% summarise() %>% mutate(code = as.character(code))
+aurn           <- importMeta(source = 'aurn') %>% group_by(code) %>% summarise() %>% mutate(code = as.character(code)) %>% head(100)
 
 aurn_data      <- list()
 
 for (i in 1:nrow(aurn)) {
   
-  aurn_data[[i]] <- importAURN(site = aurn$code[i], pollutant = 'all', year = 2013:2019)
+  aurn_data[[i]] <- suppressWarnings(importAURN(site = aurn$code[i], pollutant = 'all', year = years))
   
-  ## 
-  
-  closeAllConnections()
+  #closeAllConnections()
   
   print(i)
   
@@ -206,8 +210,10 @@ aurn_result <- left_join(means, counts, by = c('site' = 'site', 'date' = 'date',
           filter(!is.na(mean)) %>% 
           ungroup()
 
-hours <- tibble(year  = 2013:2019,
+hours <- tibble(years_to_consider = c(2013, 2014, 2015, 2016, 2017, 2018, 2019),
                 hours = c(8761,8761,8761,8785,8761,8761,8761))
+
+hours <- filter(hours, years_to_consider %in% years) %>% rename(year = years_to_consider)
 
 aurn_result            <- left_join(aurn_result, hours, by = c('date' = 'year'))
 aurn_result$percentage <- 100*(aurn_result$measurements / aurn_result$hours)
@@ -229,6 +235,8 @@ result <- bind_rows(kcl_result, aurn_result)
 rm(kcl_result, aurn_result)
 
 result <- select(result, -measurements, -hours) %>% rename(capture_rate = percentage)
+
+head(result)
 
 ```
 
@@ -280,24 +288,26 @@ result[is.na(result$duplicate), 'duplicate'] <- 'N'
 Make graphs
 
 ```{r, message=F, warning=F, echo=F}
-cols                <- c('Non-London' = 'yellow', 'LAEIBox' = 'red')
+#cols                <- c('Non-London' = 'yellow', 'LAEIBox' = 'red')
 
-ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70 & duplicate == 'N'), aes(date, mean, group=code)) +
-  geom_path(alpha=0.4,aes(colour=name)) +
-  scale_color_manual(values = cols) +
-  #geom_smooth(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & percentage > 70), aes(date, mean, group=1),
-  #            colour = 'white', fill = 'white') +
-  facet_wrap(.~toupper(pollutant), scales = 'free_y', ncol = 1) +
-  theme(legend.position   = 'none',
-        panel.grid        = element_blank(),
-        panel.background  = element_rect(fill = 'black'),
-        axis.title.x      = element_blank(),
-        strip.background  = element_blank(),
-        strip.text.x      = element_text(angle = 0, hjust = 0, colour='black', size=12),
-        axis.text         = element_text(size = 12, colour = 'black')) +
- ylab (expression(paste("Concentration (", mu, g, "/", m^3, ")", sep=""))) +
-  transition_reveal(date) +
-  ease_aes('linear')
+#plot <- ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70 & duplicate == 'N'), aes(date, mean, group=code)) +
+#  geom_path(alpha=0.4,aes(colour=name)) +
+#  scale_color_manual(values = cols) +
+#  #geom_smooth(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & percentage > 70), aes(date, mean, group=1),
+#  #            colour = 'white', fill = 'white') +
+#  facet_wrap(.~toupper(pollutant), scales = 'free_y', ncol = 1) +
+#  theme(legend.position   = 'none',
+#        panel.grid        = element_blank(),
+#        panel.background  = element_rect(fill = 'black'),
+#        axis.title.x      = element_blank(),
+#        strip.background  = element_blank(),
+#        strip.text.x      = element_text(angle = 0, hjust = 0, colour='black', size=12),
+#        axis.text         = element_text(size = 12, colour = 'black')) +
+# ylab (expression(paste("Concentration (", mu, g, "/", m^3, ")", sep=""))) +
+#  transition_reveal(date) +
+#  ease_aes('linear')
+
+#print(plot)
 ```
 
 Write data
@@ -308,20 +318,6 @@ result %>%
   st_transform(27700) %>% 
   st_write(paste0('site_means_', Sys.Date(), '.csv'), layer_options = "GEOMETRY=AS_XY")
 
-```
-
-Make map
-
-```{r}
-london    <- st_read('https://github.com/KCL-ERG/useful_geography/raw/master/london_boroughs.geojson')
-
-ggplot() + 
-  geom_sf(data=london) +
-  geom_sf(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70 & duplicate == 'N'),
-          aes(size = mean)) +
-  transition_time(date) +
-  ease_aes('linear')
-  
-
+head(result)
 
 ```
