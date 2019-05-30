@@ -288,26 +288,26 @@ result[is.na(result$duplicate), 'duplicate'] <- 'N'
 Make graphs
 
 ```{r, message=F, warning=F, echo=F}
-#cols                <- c('Non-London' = 'yellow', 'LAEIBox' = 'red')
+cols                <- c('Non-London' = 'yellow', 'LAEIBox' = 'red')
 
-#plot <- ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70 & duplicate == 'N'), aes(date, mean, group=code)) +
-#  geom_path(alpha=0.4,aes(colour=name)) +
-#  scale_color_manual(values = cols) +
-#  #geom_smooth(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & percentage > 70), aes(date, mean, group=1),
-#  #            colour = 'white', fill = 'white') +
-#  facet_wrap(.~toupper(pollutant), scales = 'free_y', ncol = 1) +
-#  theme(legend.position   = 'none',
-#        panel.grid        = element_blank(),
-#        panel.background  = element_rect(fill = 'black'),
-#        axis.title.x      = element_blank(),
-#        strip.background  = element_blank(),
-#        strip.text.x      = element_text(angle = 0, hjust = 0, colour='black', size=12),
-#        axis.text         = element_text(size = 12, colour = 'black')) +
-# ylab (expression(paste("Concentration (", mu, g, "/", m^3, ")", sep=""))) +
-#  transition_reveal(date) +
-#  ease_aes('linear')
+ggplot(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & capture_rate > 70 & duplicate == 'N'), aes(date, mean, group=code)) +
+  geom_path(alpha=0.4,aes(colour=name)) +
+  scale_color_manual(values = cols) +
+  #geom_smooth(data = filter(result, pollutant %in% c('pm10', 'pm25', 'no2') & percentage > 70), aes(date, mean, group=1),
+  #            colour = 'white', fill = 'white') +
+  facet_wrap(.~toupper(pollutant), scales = 'free_y', ncol = 1) +
+  theme(legend.position   = 'none',
+        panel.grid        = element_blank(),
+        panel.background  = element_rect(fill = 'black'),
+        axis.title.x      = element_blank(),
+        strip.background  = element_blank(),
+        strip.text.x      = element_text(angle = 0, hjust = 0, colour='black', size=12),
+        axis.text         = element_text(size = 12, colour = 'black')) +
+ ylab (expression(paste("Concentration (", mu, g, "/", m^3, ")", sep=""))) +
+  transition_reveal(date) +
+  ease_aes('linear')
 
-#print(plot)
+
 ```
 
 Write data
